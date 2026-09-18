@@ -21,7 +21,11 @@ fun App() {
             composable("splash") {
                 SplashScreen(
                     onFinish = {
-                        navController.navigate(("main"))
+                        navController.navigate(("main")){
+                            popUpTo("splash") {
+                                inclusive = true
+                            }
+                        }
                     }
                 )
             }

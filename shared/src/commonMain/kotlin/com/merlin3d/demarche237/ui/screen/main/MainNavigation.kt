@@ -35,6 +35,7 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.merlin3d.demarche237.ui.screen.main.navigation.FavoriteScreen
 import com.merlin3d.demarche237.ui.screen.main.navigation.HomeScreen
 import com.merlin3d.demarche237.ui.screen.main.navigation.SearchScreen
@@ -55,20 +56,21 @@ enum class Destination(
 
 @Composable
 fun AppNavHost(
-    navController: NavController,
+    navController: NavHostController,
     startDestination: Destination,
     modifier: Modifier = Modifier
-){
+) {
     NavHost(
-        navController as NavHostController,
-        startDestination = startDestination.route
+        navController = navController,
+        startDestination = startDestination.route,
+        modifier = modifier
     ) {
         Destination.entries.forEach { destination ->
             composable(destination.route) {
                 when (destination) {
+                    Destination.HOME -> HomeScreen()
                     Destination.SEARCH -> SearchScreen()
                     Destination.FAVORITE -> FavoriteScreen()
-                    else -> HomeScreen()
                 }
             }
         }
@@ -77,48 +79,76 @@ fun AppNavHost(
 
 @Preview
 @Composable
-fun MainNavigation(){
+fun MainNavigation() {
+
     val navController = rememberNavController()
-    val startDestination = Destination.HOME
 
-    var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
-    val interactionSource = remember { MutableInteractionSource() }
-    Scaffold (
+    Scaffold(
         bottomBar = {
-            NavigationBar(windowInsets = NavigationBarDefaults.windowInsets) {
-                Destination.entries.forEachIndexed { index, destination ->
+            NavigationBar(
+                windowInsets = NavigationBarDefaults.windowInsets
+            ) {
+                Destination.entries.forEach { destination ->
+                    val isSelected =
+                        currentRoute == destination.route
                     NavigationBarItem(
-                        selected = selectedDestination == index,
+                        selected = isSelected,
                         onClick = {
-                            navController.navigate(route = destination.route)
-                            selectedDestination = index
+                            navController.navigate(destination.route) {
+                                popUpTo(
+                                    navController.graph.startDestinationId
+                                ) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF017962),
                             indicatorColor = Color.Transparent
                         ),
                         icon = {
                             Column(
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ){
+                                verticalArrangement =
+                                    Arrangement.spacedBy(4.dp),
+                                horizontalAlignment =
+                                    Alignment.CenterHorizontally
+                            ) {
                                 Icon(
-                                    painter = painterResource(destination.icon),
-                                    contentDescription = destination.contentDescription,
+                                    painter = painterResource(
+                                        destination.icon
+                                    ),
+                                    contentDescription =
+                                        destination.contentDescription,
                                     modifier = Modifier.size(24.dp),
-                                    tint = if(selectedDestination == index ) Color(0xFF017962) else Color.Gray
+                                    tint = if (isSelected) Color(0xFF017962) else Color.Gray
                                 )
-                                Text(destination.label, style = TextStyle(
-                                    fontWeight = FontWeight(600)
-                                ))
-                                Box(modifier = Modifier.size(80.dp, 2.dp).background(color = if (selectedDestination == index)  Color(0xFF017962) else Color.Transparent) )
+                                Text(
+                                    text = destination.label,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isSelected) Color(0xFF017962) else Color.Gray
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp, 2.dp)
+                                        .background(
+                                            if (isSelected) Color(0xFF017962) else Color.Transparent
+                                        )
+                                )
                             }
-
-                        },
+                        }
                     )
                 }
             }
         }
-    ) { contentPadding ->  AppNavHost(navController, startDestination, modifier = Modifier.padding(contentPadding))}
+    ) { contentPadding ->
+        AppNavHost(
+            navController = navController,
+            startDestination = Destination.HOME,
+            modifier = Modifier.padding(contentPadding)
+        )
+    }
 }
